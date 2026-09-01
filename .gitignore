@@ -1,11 +1,5 @@
-/.Rproj.user/
-.Rhistory
+flights.csv
+Data
+.Rproj.user
 .RData
-.Ruserdata
-flights.csv
-flights.csv
-*.csv
-*.csv
-flights.csv
-B057C9A6
-
+.Rhistory

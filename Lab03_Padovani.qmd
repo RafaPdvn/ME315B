@@ -1,0 +1,128 @@
+---
+title: "Lab03_Padovani"
+author: "Rafael Padovani"
+format: pdf
+editor: visual
+---
+
+## Laboratório 03
+
+### Dados relacionais e operações do tipo join
+
+```{r, warning=FALSE}
+library(tidyverse)
+library(leaflet)
+```
+
+#### 1 - Importe, utilizando o pacote readr, cada um dos três arquivos disponíveis. Os objetos resultantes devem ser chamados flights, airlines e airports.
+
+```{r}
+airlines <- read_csv("Data/airlines.csv")
+
+airports <- read_csv("Data/airports.csv", 
+                     col_select = c(IATA_CODE, CITY, STATE, LATITUDE, LONGITUDE))
+```
+
+```{r}
+processa_lote_voos <- function(df, pos) {
+  df %>%
+    filter(!str_starts(DESTINATION_AIRPORT, "1")) %>%
+    drop_na() %>%
+    group_by(DESTINATION_AIRPORT) %>%
+    summarise(
+      soma_atrasos = sum(ARRIVAL_DELAY),
+      qtd_voos = n(),
+      .groups = "drop"
+    )
+}
+```
+
+```{r}
+cols <- cols_only(
+  DESTINATION_AIRPORT = col_character(),
+  ARRIVAL_DELAY = col_double()
+)
+
+flights <- read_csv_chunked(
+  file = "Data/flights.csv",
+  callback = DataFrameCallback$new(processa_lote_voos),
+  chunk_size = 1000000,
+  col_types = cols
+)
+```
+
+```{r}
+flights_summary <- flights %>%
+  group_by(DESTINATION_AIRPORT) %>%
+  summarise(
+    total_atrasos = sum(soma_atrasos),
+    total_voos = sum(qtd_voos),
+    .groups = "drop"
+  ) %>%
+  mutate(ATRASO_MEDIO = total_atrasos / total_voos) %>%
+  select(DESTINATION_AIRPORT, ATRASO_MEDIO)
+
+flights_summary
+```
+
+#### 2 - Selecione a operação apropriada join para incluir, na tabela flights, as colunas CITY e STATE do objeto airports. Para executar esta tarefa:
+
+```{r}
+aeroportos_ausentes <- anti_join(
+  flights_summary, 
+  airports, 
+  by = c("DESTINATION_AIRPORT" = "IATA_CODE")
+)
+print(aeroportos_ausentes)
+```
+```{r}
+flights <- left_join(
+  flights_summary, 
+  airports, 
+  by = c("DESTINATION_AIRPORT" = "IATA_CODE")
+)
+flights
+```
+
+#### 3 - Quantos aeroportos cada estado possui? Apresente uma tabela ordenada de forma decrescente (no número de aeroportos).
+
+```{r}
+tabela_estados <- airports %>%
+  group_by(STATE) %>%
+  summarise(numero_aeroportos = n()) %>%
+  arrange(desc(numero_aeroportos))
+
+print("Número de aeroportos por Estado:")
+print(tabela_estados)
+```
+
+#### 4 - Apresente um mapa representando todos os atrasos observados por aeroporto.
+
+```{r}
+flights_mapa <- flights %>% drop_na(LATITUDE, LONGITUDE)
+
+# Criando o mapa com leaflet
+this <- leaflet(data = flights_mapa) %>%
+  addTiles() %>%
+  addMarkers(
+    lng = ~LONGITUDE,
+    lat = ~LATITUDE,
+    popup = ~paste0(
+      "<b>Aeroporto:</b> ", DESTINATION_AIRPORT, " - ", CITY, "<br>",
+      "<b>Atraso Médio:</b> ", round(ATRASO_MEDIO, 2), " min"
+    )
+  )
+```
+
+```{r}
+this
+```
+
+
+```{r}
+Sys.setenv(TZ = "America/Sao_Paulo")
+Sys.time()
+```
+
+
+
