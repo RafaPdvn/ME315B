@@ -9,7 +9,7 @@ editor: visual
 
 ### Dados relacionais e operações do tipo join
 
-```{r, warning=FALSE}
+```{r, message=FALSE}
 library(tidyverse)
 library(leaflet)
 ```

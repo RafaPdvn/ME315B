@@ -1,0 +1,142 @@
+---
+title: "Lab05_Padovani"
+format: html
+---
+
+## Laboratório 05
+
+### Laboratório Especial
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(leaflet)
+library(maps)
+```
+
+```{r}
+# Crição da função que recebe o tail_number e o caminho para o arquivo .csv
+analisa_aeronave <- function(tail_number, arquivo) {
+  
+  # Função para filtrar dados apenas do tail_number escolhido
+  filtra_tail <- function(dados, pos) {
+    dados %>% filter(TAIL_NUMBER == tail_number)
+  }
+  # Leitura em chunks
+  tabela_voos <- read_csv_chunked(
+    file = arquivo,
+    callback = DataFrameCallback$new(filtra_tail),
+    chunk_size = 100000,
+    show_col_types = FALSE
+  )
+  
+  # Se nenhum voo é contrato, uma mensagem é exibida
+  if (nrow(tabela_voos) == 0) {
+    stop("Nenhum voo encontrado para o TAIL_NUMBER informado.")
+  }
+  
+  # Carregar coordenadas dos aeroportos
+  caminho_airports <- file.path(dirname(arquivo), "airports.csv")
+  airports <- read_csv(caminho_airports, show_col_types = FALSE) %>% 
+    select(IATA_CODE, LATITUDE, LONGITUDE)
+  
+  # Limpeza, ordenação e cálculo da estatística (velocidade média)
+  tabela_tidy <- tabela_voos %>%
+    filter(CANCELLED == 0, !is.na(AIR_TIME), !is.na(DEPARTURE_TIME)) %>%
+    mutate(
+      DEP_TIME_PAD = sprintf("%04d", as.numeric(DEPARTURE_TIME)),
+      DATA_HORA = as.POSIXct(
+        paste(YEAR, MONTH, DAY, DEP_TIME_PAD),
+        format = "%Y %m %d %H%M"
+      ),
+      DISTANCE = as.numeric(DISTANCE),
+      AIR_TIME = as.numeric(AIR_TIME),
+      VELOCIDADE_MEDIA = DISTANCE / (AIR_TIME / 60)
+    ) %>%
+    arrange(DATA_HORA)
+  
+  # Criando uma tabela com origens e destinos
+  tabela_mapa <- tabela_tidy %>%
+    left_join(airports, by = c("ORIGIN_AIRPORT" = "IATA_CODE")) %>%
+    rename(LAT_ORIG = LATITUDE, LONG_ORIG = LONGITUDE) %>%
+    left_join(airports, by = c("DESTINATION_AIRPORT" = "IATA_CODE")) %>%
+    rename(LAT_DEST = LATITUDE, LONG_DEST = LONGITUDE) %>%
+    filter(!is.na(LAT_ORIG), !is.na(LAT_DEST))
+  
+  # Criando mapa dos voos
+  mapa_base <- map_data("usa")
+  
+  mapa_trajeto <- ggplot() +
+    geom_polygon(
+      data = mapa_base, 
+      aes(x = long, y = lat, group = group),
+      fill = "#f2f2f2", 
+      color = "#cccccc"
+    ) +
+    # Velocidade representada pelas cores das linhas
+    geom_segment(
+      data = tabela_mapa,
+      aes(
+        x = LONG_ORIG, y = LAT_ORIG,
+        xend = LONG_DEST, yend = LAT_DEST,
+        color = VELOCIDADE_MEDIA
+      ),
+      linewidth = 0.8,
+      alpha = 0.7,
+      lineend = "round"
+    ) +
+    geom_point(
+      data = tabela_mapa, 
+      aes(x = LONG_ORIG, y = LAT_ORIG), 
+      color = "#333333", 
+      size = 0.8
+    ) +
+    scale_color_viridis_c(name = "Velocidade Média", option = "plasma") +
+    coord_quickmap(xlim = c(-130, -65), ylim = c(24, 50)) +
+    labs(
+      title = paste("Trajeto Anual da Aeronave:", tail_number),
+      subtitle = paste("Total de trechos voados:", nrow(tabela_mapa)),
+      x = "Longitude",
+      y = "Latitude"
+    ) +
+    theme_minimal() +
+    theme(
+      panel.background = element_rect(fill = "#ffffff", color = NA),
+      plot.title = element_text(face = "bold", size = 14)
+    )
+
+  # Retornando tabela e mapa
+  return(list(
+    tabela = tabela_tidy,
+    mapa = mapa_trajeto
+  ))
+}
+  
+```
+
+
+```{r}
+# Chamando a função passando tail_number e caminho do arquivo .csv
+resultado <- analisa_aeronave(
+  tail_number = "N431WN",
+  arquivo = file.path("Data", "flights.csv")
+)
+```
+
+```{r}
+# Acessar a tabela
+head(resultado$tabela)
+
+```
+
+```{r}
+# Visualizando o mapa
+print(resultado$mapa)
+```
+
+
+```{r}
+# Exibindo o horário de execução do código
+Sys.setenv(TZ = "America/Sao_Paulo")
+Sys.time()
+```
+
