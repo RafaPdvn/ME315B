@@ -1,6 +1,6 @@
 ---
 title: "Lab05_Padovani"
-format: html
+format: pdf
 ---
 
 ## Laboratório 05
