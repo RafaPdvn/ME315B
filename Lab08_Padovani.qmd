@@ -1,0 +1,92 @@
+---
+title: "Lab08_Padovani"
+format: pdf
+---
+
+## Laboratório 7
+
+### Dados Relacionais com Polars
+
+```{r, warning=FALSE, message=FALSE}
+library(polars)
+```
+
+Leitura das bases de dados
+
+```{r, warning=FALSE, message=FALSE}
+basics <- pl$read_csv("Data/title.basics0.tsv", separator = "\t", null_values = "\\N")
+ratings <- pl$read_csv("Data/title.ratings.tsv", separator = "\t", null_values = "\\N")
+principals <- pl$read_csv("Data/title.principals0.tsv", separator = "\t", null_values = "\\N")
+```
+
+1.  Quais são os 5 filmes com as maiores notas (averageRating)? Apresente uma solução capaz de desempatar os filmes baseando-se no número de votos recebidos.
+=
+```{r, warning=FALSE, message=FALSE}
+top5 <- basics$
+  filter(pl$col("titleType") == "movie")$
+  join(ratings, on = "tconst", how = "inner")$
+  sort("averageRating", "numVotes", descending = c(TRUE, TRUE))$
+  select("primaryTitle", "averageRating", "numVotes")$
+  head(5)
+
+print(top5)
+```
+
+2.  Qual é o gênero mais frequente entre os filmes com nota maior que 8?
+
+```{r, warning=FALSE, message=FALSE}
+genero_frequente <- basics$
+  join(ratings, on = "tconst", how = "inner")$
+  filter(
+    pl$col("titleType") == "movie" & 
+    pl$col("averageRating") > 8 &
+    pl$col("genres")$is_not_null()
+  )$
+  select("genres")$
+  with_columns(pl$col("genres")$str$split(","))$
+  explode("genres")$
+  group_by("genres")$
+  agg(pl$len()$alias("contagem"))$
+  sort("contagem", descending = TRUE)$
+  head(1)
+
+print(genero_frequente)
+```
+
+
+3.  Quais são os 3 atores/atrizes que mais participaram de filmes com nota maior que 7.5?
+
+```{r, warning=FALSE, message=FALSE}
+filmes <- basics$
+  filter(pl$col("titleType") == "movie")$
+  join(ratings, on = "tconst", how = "inner")$
+  filter(pl$col("averageRating") > 7.5)
+
+atores <- principals$
+  filter(pl$col("category") == ("actor"))
+
+top_3_atores <- atores$
+  join(filmes, on = "tconst", how = "inner")$
+  group_by("nconst")$
+  agg(pl$len()$alias("total_filmes_bons"))$
+  sort("total_filmes_bons", descending = TRUE)$
+  head(3)
+
+print(top_3_atores)
+```
+
+```{r}
+# Exibindo o horário de execução do código
+Sys.setenv(TZ = "America/Sao_Paulo")
+Sys.time()
+```
+
+
+
+
+
+
+
+
+
+
