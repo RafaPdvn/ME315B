@@ -1,0 +1,72 @@
+---
+title: "Lab09_Padovani"
+format: pdf
+---
+
+## Laboratório 9
+
+### Visualização de Dados com plotnine
+
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+```
+
+```{r}
+p1 <- ggplot(diamonds, aes(x = carat, y = price)) +
+  geom_point(alpha = 0.1, size = 0.5, color = "lightblue") +
+  geom_smooth(method = 'gam', formula = y ~ s(x, bs = "cs"), color = "red", se = FALSE) +
+  labs(
+    title = "Relação entre Peso (Carat) e Preço", 
+    x = "Peso (Quilates)", 
+    y = "Preço (USD)"
+  ) +
+  theme_minimal()
+
+print(p1)
+```
+
+Para podermos visualizar os 53.940 pontos (diamantes) no gráfico sem ficarem sobrepostos, sua densidade e distribuição, precisamos adicionar uma transparência (alpha = 0.1) e a reduzir o tamanho dos pontos (size = 0.5). Além disso, com uma linha de tendência (geom_smooth com método loess) podemos ver uma associação positiva e não-linear entre as duas variáveis. Conforme o peso do diamente aumenta, o preço também aumenta. A grande maioria dos diamentes pesa menos de 1,5 quilates e custa menos de 10mil USD. Para pesos acima de 3 quilates quase não há dados disponíveis.
+
+
+```{r}
+p2 <- ggplot(diamonds, aes(x = carat, y = price, color = cut)) +
+  geom_point(alpha = 0.2, size = 0.5) +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE) +
+  facet_wrap(~ cut, ncol = 3) +
+  scale_color_brewer(type = "qual", palette = "Set1") +
+  labs(
+    title = "Relação entre Peso e Preço por Qualidade do Corte", 
+    x = "Peso (Quilates)", 
+    y = "Preço (USD)", 
+    color = "Corte"
+  ) +
+  theme_minimal() +
+  theme(panel.spacing = unit(1, "lines"))
+
+print(p2)
+```
+
+Observando os diferentes cortes de diamante ainda notamos uma associação positiva entre o peso e o preço em todas as categorias. Porém, o angulo é mais acentuado nas qualidades "Very good", "Premium" e "ideal" indicando que o preço cresce mais rapidamente conforme o peso aumento do que nas qualidade "Fair" e "Good" que também possuem uma dispersão maior.
+
+
+```{r}
+p3 <- ggplot(diamonds, aes(x = carat, y = price, color = cut)) +
+  geom_point(alpha = 0.5, size = 0.3) +
+  facet_grid(color ~ clarity) +
+  labs(
+    title = "Preço vs Peso: Cor (linhas) x Clareza (colunas)", 
+    x = "Peso (Quilates)", 
+    y = "Preço (USD)", 
+    color = "Corte"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(p3)
+```
+
+Quando plotamos muitas categorias as informações ficam dificeis de serem visualizadas por haverem muitos gráficos e todos precisarem se "espremer" para caber na grid.
+Ainda conseguimos ver a associação positiva entre preço e peso. Mas, a combinação entre clareza e cor mostra um pequena diferença entre cores diferentes para a mesma clareza, com algumas mais acentuadas e outras mais achatadas. O que de fato tem uma influenciar relevante é a clareza por si só.
+
+
+
